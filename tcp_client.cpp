@@ -3,43 +3,45 @@
 #include "log.hpp"
 
 using namespace std::placeholders;
+using namespace boost;
 
 namespace mmocli
 {
 
-tcp_client::tcp_client(std::shared_ptr<boost::asio::io_context> io_context_p, asio::ip::tcp::socket&& socket)
-    : io_context_p_(io_context_p)
+tcp_client::tcp_client(boost::asio::io_context* io_context, asio::ip::tcp::socket&& socket, tcp_server* tcp_server)
+    : io_context_(io_context)
     , socket_(std::move(socket))
-{}
-
-void tcp_client::start()
+    , tcp_server_(tcp_server)
 {
     do_receive();
 }
 
-void tcp_client::close()
-{
-    socket_.close();
-}
-
 void tcp_client::do_receive()
 {
-    socket_.async_receive(asio::buffer(receive_buffer_), std::bind(&tcp_client::on_receive, shared_from_this(), _1));
+    socket_.async_receive(asio::buffer(receive_buffer_), std::bind(&tcp_client::on_receive, this, _1));
+}
+
+std::vector<boost::system::error_code> critical_errors =
+{
+    boost::asio::error::eof
+};
+
+static bool is_critical(boost::system::error_code const& error)
+{
+    return std::find(critical_errors.cbegin(), critical_errors.cend(), error) == critical_errors.cend();
 }
 
 void tcp_client::on_receive(boost::system::error_code const& error)
 {
+
     if (error)
     {
-        if (error.value() != 995 && error.value() != 1236 && error.value() != 10009)
-            MMOCLI_LOG_RED("client", "on receive", error.value() << ":" << error.message());
-
-        socket_.close();
-
+        *log_stream << log("tcp client", "on receive", is_critical(error) ? color::red : color::cyan) << error.value() << ":" << error.message() << endl;
+        tcp_server_->remove_client(this);
         return;
     };
 
-    MMOCLI_LOG_COLOR(MMOCLI_CYAN, "client", "on receive", receive_buffer_[0]);
+    *log_stream << log("tcp client", "on receive", color::cyan) << receive_buffer_[0] << endl;
 
     do_receive();
 }

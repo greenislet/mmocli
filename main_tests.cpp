@@ -1,112 +1,170 @@
-#include <chrono>
-#include <future>
-
-#include <iostream>
-#include <thread>
-#include <tuple>
-
-#include <boost/array.hpp>
-#include <boost/asio.hpp>
-#include <boost/asio/use_future.hpp>
-
 #include <gtest/gtest.h>
 
-#include "launch.hpp"
-#include "log.hpp"
 #include "on_exit.hpp"
+#include "server.hpp"
+#include "game_server.hpp"
 
-using namespace std::literals::chrono_literals;
+using namespace boost;
 
-namespace asio = boost::asio;
-
-#define ASSERT_FUTURES()\
-do {\
-for (auto& fut : *resources.futures_p)\
-{\
-    ASSERT_TRUE(fut.valid());\
-    ASSERT_NO_THROW(fut.get());\
-} } while(0)
-
-#define LAUNCH()\
-mmocli::resources resources;\
-ASSERT_NO_THROW(resources = mmocli::launch());\
-mmocli::on_exit oe([&resources] { resources.io_context_p->stop(); })
-
-TEST(tcp_server, all)
+TEST(tcp_server, instanciation_destruction)
 {
+    mmocli::tcp_server* tcp_server;
+    asio::io_context io_context;
+    ASSERT_NO_THROW(tcp_server = new mmocli::tcp_server(2222, &io_context));
+    ASSERT_NO_THROW(delete tcp_server);
+}
+
+TEST(tcp_server, connect_one)
+{
+    asio::io_context io_context;
+    mmocli::on_exit stop_on_exit1([&io_context] {io_context.stop(); });
+    auto tcp_server = new mmocli::tcp_server(2222, &io_context);
+
+    ASSERT_TRUE(tcp_server->accepting());
+
+    asio::ip::tcp::resolver resolver(io_context);
+    asio::ip::tcp::resolver::results_type results = resolver.resolve(asio::ip::tcp::resolver::query("127.0.0.1", "2222"));
+
+
+    auto fut = std::async(std::launch::async, [&io_context] { io_context.run(); });
+
+    ASSERT_TRUE(tcp_server->tcp_clients().empty());
+
+    asio::ip::tcp::socket socket(io_context);
+    mmocli::on_exit stop_on_exit2([&io_context] {io_context.stop(); });
+
+    socket.connect(*results);
+    std::this_thread::sleep_for(0.1s);
+
+    ASSERT_EQ(1, tcp_server->tcp_clients().size());
+    ASSERT_TRUE(tcp_server->accepting());
+
+    ASSERT_NO_THROW(io_context.stop());
+    ASSERT_NO_THROW(delete tcp_server);
+    ASSERT_NO_THROW(fut.get());
+}
+
+TEST(tcp_server, connect_two)
+{
+    asio::io_context io_context;
+    mmocli::on_exit stop_on_exit1([&io_context] {io_context.stop(); });
+    auto tcp_server = new mmocli::tcp_server(2222, &io_context);
+
+    ASSERT_TRUE(tcp_server->accepting());
+
+    asio::ip::tcp::resolver resolver(io_context);
+    asio::ip::tcp::resolver::results_type results = resolver.resolve(asio::ip::tcp::resolver::query("127.0.0.1", "2222"));
+
+
+    auto fut = std::async(std::launch::async, [&io_context] { io_context.run(); });
+
+    ASSERT_TRUE(tcp_server->tcp_clients().empty());
+
+    asio::ip::tcp::socket socket1(io_context);
+    asio::ip::tcp::socket socket2(io_context);
+    mmocli::on_exit stop_on_exit2([&io_context] {io_context.stop(); });
+
+    socket1.connect(*results);
+    std::this_thread::sleep_for(0.1s);
+
+    ASSERT_EQ(1, tcp_server->tcp_clients().size());
+    ASSERT_TRUE(tcp_server->accepting());
+
+    socket2.connect(*results);
+    std::this_thread::sleep_for(0.1s);
+
+    ASSERT_EQ(2, tcp_server->tcp_clients().size());
+    ASSERT_TRUE(tcp_server->accepting());
+
+    ASSERT_NO_THROW(io_context.stop());
+    ASSERT_NO_THROW(delete tcp_server);
+    ASSERT_NO_THROW(fut.get());
+}
+
+TEST(tcp_server, connect_twenty)
+{
+    asio::io_context io_context;
+    mmocli::on_exit stop_on_exit1([&io_context] {io_context.stop(); });
+    auto tcp_server = new mmocli::tcp_server(2222, &io_context);
+
+    ASSERT_TRUE(tcp_server->accepting());
+
+    asio::ip::tcp::resolver resolver(io_context);
+    asio::ip::tcp::resolver::results_type results = resolver.resolve(asio::ip::tcp::resolver::query("127.0.0.1", "2222"));
+
+
+    auto fut = std::async(std::launch::async, [&io_context] { io_context.run(); });
+
+    ASSERT_TRUE(tcp_server->tcp_clients().empty());
+
+    std::vector<asio::ip::tcp::socket> sockets;
+    mmocli::on_exit stop_on_exit2([&io_context] {io_context.stop(); });
+
+    for (int i = 0; i < 20; ++i)
     {
-        MMOCLI_LOG_COLOR(MMOCLI_YELLOW, "test", "tcp_server.launch_shutdown", "launching");
+        sockets.emplace_back(io_context);
+        sockets.back().connect(*results);
+        std::this_thread::sleep_for(0.01s);
 
-        LAUNCH();
-
-        ASSERT_TRUE(resources.tcp_server_p->accepting());
-
-        MMOCLI_LOG_COLOR(MMOCLI_YELLOW, "test", "tcp_server.launch_shutdown", "shuting down");
-
-        ASSERT_NO_THROW(resources.tcp_server_p->shutdown());
-        ASSERT_FALSE(resources.tcp_server_p->accepting());
-
-        ASSERT_FUTURES();
+        ASSERT_EQ(i + 1, tcp_server->tcp_clients().size());
+        ASSERT_TRUE(tcp_server->accepting());
     }
 
-    {
-        MMOCLI_LOG_COLOR(MMOCLI_YELLOW, "test", "tcp_server.accept", "launching");
+    ASSERT_NO_THROW(io_context.stop());
+    ASSERT_NO_THROW(delete tcp_server);
+    ASSERT_NO_THROW(fut.get());
+}
 
-        LAUNCH();
+TEST(tcp_server, connect_disconnect)
+{
+    asio::io_context io_context;
+    mmocli::on_exit stop_on_exit1([&io_context] {io_context.stop(); });
+    auto tcp_server = new mmocli::tcp_server(2222, &io_context);
 
-        MMOCLI_LOG_COLOR(MMOCLI_YELLOW, "test", "tcp_server.accept", "waiting for resolve");
-        asio::ip::tcp::resolver resolver(*resources.io_context_p);
-        std::future<std::tuple<boost::system::error_code, asio::ip::tcp::resolver::results_type>> fut1 = std::async(std::launch::async, [&resolver]
-            {
-                boost::system::error_code error;
-                asio::ip::tcp::resolver::results_type results = resolver.resolve(asio::ip::tcp::resolver::query("localhost", "2222"), error);
-                if (error)
-                    MMOCLI_LOG_COLOR(MMOCLI_YELLOW, "test", "tcp_server.accept", "resolve: " << error.message());
-                return std::make_tuple(error, results);
-            });
-        ASSERT_EQ(std::future_status::ready, fut1.wait_for(5s));
-        std::tuple<boost::system::error_code, asio::ip::tcp::resolver::results_type> results = fut1.get();
-        ASSERT_FALSE(std::get<0>(results));
 
-        asio::ip::tcp::socket socket(*resources.io_context_p);
-        MMOCLI_LOG_COLOR(MMOCLI_YELLOW, "test", "tcp_server.accept", "waiting for connect");
-        std::future<boost::system::error_code> fut2 = std::async(std::launch::async, [&socket, &results]
-            {
-                boost::system::error_code error;
-                socket.connect(*std::get<1>(results), error);
-                if (error)
-                    MMOCLI_LOG_COLOR(MMOCLI_YELLOW, "test", "tcp_server.accept", "accept: " << error.message());
-                return error;
-            });
+    ASSERT_TRUE(tcp_server->accepting());
 
-        ASSERT_EQ(std::future_status::ready, fut2.wait_for(5s));
-        ASSERT_FALSE(fut2.get());
+    asio::ip::tcp::resolver resolver(io_context);
+    asio::ip::tcp::resolver::results_type results = resolver.resolve(asio::ip::tcp::resolver::query("127.0.0.1", "2222"));
 
-        MMOCLI_LOG_COLOR(MMOCLI_YELLOW, "test", "tcp_server.accept", "shuting down");
-        resources.tcp_server_p->shutdown();
 
-        ASSERT_FUTURES();
-    }
+    auto fut = std::async(std::launch::async, [&io_context] { io_context.run(); });
 
-    {
-        MMOCLI_LOG_COLOR(MMOCLI_YELLOW, "test", "tcp_server.write", "launching");
+    ASSERT_TRUE(tcp_server->tcp_clients().empty());
 
-        LAUNCH();
+    asio::ip::tcp::socket socket(io_context);
+    mmocli::on_exit stop_on_exit2([&io_context] {io_context.stop(); });
+    socket.connect(*results);
+    std::this_thread::sleep_for(0.1s);
 
-        asio::ip::tcp::resolver resolver(*resources.io_context_p);
+    ASSERT_EQ(1, tcp_server->tcp_clients().size());
+    ASSERT_TRUE(tcp_server->accepting());
 
-        asio::ip::tcp::resolver::results_type results = resolver.resolve(asio::ip::tcp::resolver::query("localhost", "2222"));
+    socket.close();
+    std::this_thread::sleep_for(0.1s);
 
-        asio::ip::tcp::socket socket(*resources.io_context_p);
-        socket.connect(*results);
+    ASSERT_EQ(0, tcp_server->tcp_clients().size());
+    ASSERT_TRUE(tcp_server->accepting());
 
-        socket.send(asio::buffer("test"));
+    ASSERT_NO_THROW(io_context.stop());
+    ASSERT_NO_THROW(delete tcp_server);
+    ASSERT_NO_THROW(fut.get());
+}
 
-        std::this_thread::sleep_for(1s);
+TEST(game_server, instanciation_destruction)
+{
+    mmocli::game_server* game_server;
+    asio::io_context io_context;
+    ASSERT_NO_THROW(game_server = new mmocli::game_server(&io_context));
+    ASSERT_NO_THROW(delete game_server);
+}
 
-        MMOCLI_LOG_COLOR(MMOCLI_YELLOW, "test", "tcp_server.write", "shuting down");
-        resources.tcp_server_p->shutdown();
-
-        ASSERT_FUTURES();
-    }
+TEST(server, instanciation_destruction)
+{
+    mmocli::server* server;
+    ASSERT_NO_THROW(server = new mmocli::server());
+    ASSERT_NO_THROW(delete server);
+    asio::io_context io_context;
+    ASSERT_NO_THROW(server = new mmocli::server(&io_context));
+    ASSERT_NO_THROW(delete server);
 }

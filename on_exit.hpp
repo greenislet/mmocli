@@ -6,7 +6,7 @@ namespace mmocli
 {
 
 template<class T>
-requires std::invocable<T>
+    requires std::invocable<T>
 class on_exit
 {
 private:
@@ -17,7 +17,7 @@ public:
         : callable_(callable)
     {}
 
-    on_exit(T && callable)
+    on_exit(T&& callable)
         : callable_(std::move(callable))
     {}
 

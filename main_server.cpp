@@ -1,6 +1,6 @@
 #include <chrono>
 
-#include "launch.hpp"
+#include "server.hpp"
 #include "log.hpp"
 #include "tcp_server.hpp"
 
@@ -8,13 +8,12 @@ using namespace std::literals::chrono_literals;
 
 void show_help()
 {
-    _MMOCLI_MY_LOG("commands:" << std::endl
-        << "\thelp" << std::endl
-        << "\texit" << std::endl
-    );
+    mmocli::_log("commands:", static_cast<std::ostream & (*)(std::ostream&)>(std::endl), "\thelp",
+        static_cast<std::ostream& (*)(std::ostream&)>(std::endl), "\texit",
+        static_cast<std::ostream& (*)(std::ostream&)>(std::endl));
 }
 
-void handle_user_input(std::shared_ptr<mmocli::tcp_server> server_p)
+void handle_user_input(mmocli::server & server)
 {
     std::string input;
     for (;;)
@@ -23,23 +22,24 @@ void handle_user_input(std::shared_ptr<mmocli::tcp_server> server_p)
         if (input == "help")
         {
             std::lock_guard lg(mmocli::log_mutex);
-            _MMOCLI_MY_LOG("");
+            mmocli::_log("");
             show_help();
-            _MMOCLI_MY_LOG("");
+            mmocli::_log("");
         }
         else if (input == "exit")
         {
-            server_p->shutdown();
+            server.stop();
             return;
         }
         else
         {
-             std::lock_guard lg(mmocli::log_mutex);
-            _MMOCLI_MY_LOG("");
-            _MMOCLI_MY_LOG("Unknown command: " << input);
-            _MMOCLI_MY_LOG("");
+            std::lock_guard lg(mmocli::log_mutex);
+
+            mmocli::_log("");
+            mmocli::_log("Unknown command: ", input);
+            mmocli::_log("");
             show_help();
-            _MMOCLI_MY_LOG("");
+            mmocli::_log("");
         }
         std::this_thread::sleep_for(100ms);
     }
@@ -47,7 +47,9 @@ void handle_user_input(std::shared_ptr<mmocli::tcp_server> server_p)
 
 int main(int argc, char** argv, char** env)
 {
-    mmocli::resources resources = mmocli::launch();
+    mmocli::server server;
 
-    handle_user_input(resources.tcp_server_p);
+    server.start();
+
+    handle_user_input(server);
 }

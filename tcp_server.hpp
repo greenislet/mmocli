@@ -4,34 +4,38 @@
 
 #include <list>
 #include <memory>
+#include <mutex>
 
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/system/error_code.hpp>
 
-#include "tcp_client.hpp"
+//#include "tcp_client.hpp"
 
 namespace mmocli
 {
 
-class MMOCLI_API tcp_server: public std::enable_shared_from_this<tcp_server>
+class tcp_client;
+
+class MMOCLI_API tcp_server
 {
 private:
-    bool                                     accepting_;
-    std::shared_ptr<boost::asio::io_context> io_context_p_;
-    boost::asio::ip::tcp::acceptor           acceptor_;
-    boost::asio::ip::tcp::socket             new_client_socket_;
-    std::list<std::shared_ptr<tcp_client>>   tcp_clients_;
+    boost::asio::io_context*       io_context_;
+    boost::asio::ip::tcp::acceptor acceptor_;
+    boost::asio::ip::tcp::socket   new_client_socket_;
+    std::list<tcp_client>          clients_;
+    mutable std::mutex             clients_mutex_;
+    bool                           accepting_;
 public:
-                                             tcp_server(std::shared_ptr<boost::asio::io_context> io_context, unsigned short port);
-public:
-    void                                     start();
-    void                                     shutdown();
+                                   tcp_server(unsigned short port, boost::asio::io_context* io_context);
+                                   ~tcp_server();
 private:
-    void                                     do_accept();
-    void                                     on_accept(boost::system::error_code const& error);
+    void                           do_accept();
+    void                           on_accept(boost::system::error_code const& error);
 public:
-    bool                                     accepting() const;
+    bool                           accepting() const;
+    std::list<tcp_client> const&   tcp_clients() const;
+    void                           remove_client(tcp_client* client);
 };
 
 } // namespace mmocli

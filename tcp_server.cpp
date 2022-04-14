@@ -1,40 +1,38 @@
 #include "tcp_server.hpp"
 
 #include <functional>
-
 #include <boost/asio.hpp>
 
 #include "log.hpp"
+#include "tcp_client.hpp"
 
 using namespace std::placeholders;
+using namespace boost;
 
 namespace mmocli
 {
 
-tcp_server::tcp_server(std::shared_ptr<boost::asio::io_context> io_context_p, unsigned short port)
-    : io_context_p_(io_context_p)
-    , acceptor_(*io_context_p, boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), 2222))
-    , new_client_socket_(*io_context_p)
+tcp_server::tcp_server(unsigned short port, asio::io_context* io_context)
+    : io_context_(io_context)
+    , acceptor_(*io_context_, boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), 2222))
+    , new_client_socket_(*io_context_)
     , accepting_(false)
-{}
-
-void tcp_server::start()
 {
     do_accept();
 }
 
-void tcp_server::shutdown()
+tcp_server::~tcp_server()
 {
-    acceptor_.cancel();
-    acceptor_.close();
-    accepting_ = false;
-    for (auto& tcp_client : tcp_clients_)
-        tcp_client->close();
+    //acceptor_.cancel();
+    //acceptor_.close();
+    //accepting_ = false;
+    //for (auto& tcp_client : tcp_clients_)
+    //    tcp_client->close();
 }
 
 void tcp_server::do_accept()
 {
-    acceptor_.async_accept(new_client_socket_, std::bind(&tcp_server::on_accept, shared_from_this(), _1));
+    acceptor_.async_accept(new_client_socket_, std::bind(&tcp_server::on_accept, this, _1));
     accepting_ = true;
 }
 
@@ -42,21 +40,14 @@ void tcp_server::on_accept(boost::system::error_code const& error)
 {
     if (error)
     {
-        if (error.value() != 995 && error.value() != 1236 && error.value() != 10009)
-            MMOCLI_LOG_COLOR(MMOCLI_RED, "server", "accept", error.value() << ":" << error.message());
-
-        new_client_socket_.close();
-
+        *log_stream << log("tcp server", "accept", color::red) << error.value() <<  ":" << error.message() << endl;
+        accepting_ = false;
         return;
     };
 
-    auto conn = std::make_shared<tcp_client>(io_context_p_, std::move(new_client_socket_));
+    clients_.emplace_back(io_context_, std::move(new_client_socket_), this);
 
-    tcp_clients_.emplace_back(conn);
-
-    tcp_clients_.back()->start();
-
-    MMOCLI_LOG_COLOR(MMOCLI_BLUE, "server", "accept", "new client accepted");
+    *log_stream << log("tcp server", "accept", color::blue) << "new client accepted" << endl;
 
     do_accept();
 }
@@ -64,6 +55,20 @@ void tcp_server::on_accept(boost::system::error_code const& error)
 bool tcp_server::accepting() const
 {
     return accepting_;
+}
+
+std::list<tcp_client> const& tcp_server::tcp_clients() const
+{
+    return clients_;
+}
+
+void tcp_server::remove_client(tcp_client* client)
+{
+    std::lock_guard lock(clients_mutex_);
+    clients_.remove_if([client ](tcp_client const& c) -> bool
+        {
+            return &c == client;
+        });
 }
 
 } // namespace mmocli
