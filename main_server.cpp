@@ -1,5 +1,7 @@
 #include <chrono>
 
+#include <iostream>
+
 #include "server.hpp"
 #include "log.hpp"
 #include "tcp_server.hpp"
@@ -8,12 +10,12 @@ using namespace std::literals::chrono_literals;
 
 void show_help()
 {
-    mmocli::_log("commands:", static_cast<std::ostream & (*)(std::ostream&)>(std::endl), "\thelp",
-        static_cast<std::ostream& (*)(std::ostream&)>(std::endl), "\texit",
-        static_cast<std::ostream& (*)(std::ostream&)>(std::endl));
+    mmocli::log() << "commands:" << mmocli::endl;
+    mmocli::log() << "\thelp" << mmocli::endl;
+    mmocli::log() << "\texit" << mmocli::endl;
 }
 
-void handle_user_input(mmocli::server & server)
+void handle_user_input(mmocli::server& server)
 {
     std::string input;
     for (;;)
@@ -22,24 +24,23 @@ void handle_user_input(mmocli::server & server)
         if (input == "help")
         {
             std::lock_guard lg(mmocli::log_mutex);
-            mmocli::_log("");
+            mmocli::log() << mmocli::endl;
             show_help();
-            mmocli::_log("");
+            mmocli::log() << mmocli::endl;
         }
         else if (input == "exit")
         {
-            server.stop();
             return;
         }
         else
         {
             std::lock_guard lg(mmocli::log_mutex);
 
-            mmocli::_log("");
-            mmocli::_log("Unknown command: ", input);
-            mmocli::_log("");
+            mmocli::log() << mmocli::endl;
+            mmocli::log() << "Unknown command: " << input;
+            mmocli::log() << mmocli::endl;
             show_help();
-            mmocli::_log("");
+            mmocli::log() << mmocli::endl;
         }
         std::this_thread::sleep_for(100ms);
     }
@@ -47,9 +48,17 @@ void handle_user_input(mmocli::server & server)
 
 int main(int argc, char** argv, char** env)
 {
-    mmocli::server server;
+    boost::asio::io_context io_context;
+
+    mmocli::server server(io_context);
 
     server.start();
 
+    server.launch();
+
     handle_user_input(server);
+
+    io_context.stop();
+
+    server.wait();
 }

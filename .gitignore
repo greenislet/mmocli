@@ -1,3 +1,7 @@
+libmmocli.so
+subprojects/
+build*/
+
 *~
 bin/
 

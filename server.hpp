@@ -20,19 +20,23 @@ namespace mmocli
 class MMOCLI_API server
 {
 public:
-    using                          future_t            = std::future<void>;
-    using                          futures_container_t = std::vector<future_t>;
+    using future                           = std::future<void>;
+    using future_pointer                   = std::shared_ptr<future>;
+    using futures_container                = std::vector<future_pointer>;
 private:
-    std::unique_ptr<boost::asio::io_context>              io_context_;
-    bool                           ioc_allocated_;
-    tcp_server                     tcp_server_;
-    game_server                    game_server_;
+    std::unique_ptr<boost::asio::io_context> io_context_;
+    tcp_server::pointer                      tcp_server_;
+    game_server::pointer                     game_server_;
+    bool                                     ioc_allocated_;
+    futures_container                        futures_;
 public:
-                                   server(boost::asio::io_context* io_context, unsigned short port = 2222, std::chrono::steady_clock::duration const& tick_duration = 250ms);
-                                   server(unsigned short port = 2222, std::chrono::steady_clock::duration const& tick_duration = 250ms);
-                                   ~server();
+                                             server(boost::asio::io_context& io_context, unsigned short port = 2222, std::chrono::steady_clock::duration const& tick_duration = 250ms);
+                                             server(unsigned short port = 2222, std::chrono::steady_clock::duration const& tick_duration = 250ms);
+                                             ~server();
 public:
-    futures_container_t            launch(unsigned int nb_threads = std::thread::hardware_concurrency());
+    void                                     start();
+    futures_container                        launch(unsigned int nb_threads = std::thread::hardware_concurrency());
+    void                                     wait();
 };
 
 } // mmocli

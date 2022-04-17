@@ -9,26 +9,25 @@ using namespace boost;
 namespace mmocli
 {
 
-game_server::game_server(asio::io_context* io_context, std::chrono::steady_clock::duration const& tick_duration)
+game_server::game_server(asio::io_context& io_context)
     : io_context_(io_context)
-    , loop_timer_(*io_context_)
+    , loop_timer_(io_context_)
+{}
+
+void game_server::start(std::chrono::steady_clock::duration const& tick_duration)
 {
     tick_duration_ = tick_duration;
-    auto now = std::chrono::steady_clock::now();
-    auto elapsed = now - start_time;
+    std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
+    std::chrono::steady_clock::duration elapsed = now - start_time;
     elapsed -= std::chrono::floor<std::chrono::seconds>(elapsed);
     wake_time_ = now + (1s - elapsed);
 
-    /*log(color::magenta, "game server", "startup",
-        "first cycle in ", std::chrono::duration_cast<std::chrono::duration<float>>(wake_time_ - std::chrono::steady_clock::now()).count()
-       , " with tick duration of ", std::chrono::duration_cast<std::chrono::duration<float>>(tick_duration_).count(), "s");*/
+    log("game server", "startup", color::magenta)
+        << "first cycle in " << std::chrono::duration_cast<std::chrono::duration<float>>(wake_time_ - std::chrono::steady_clock::now()).count()
+        << " with tick duration of " << std::chrono::duration_cast<std::chrono::duration<float>>(tick_duration_).count() << endl;
 
     loop_timer_.expires_at(wake_time_);
-    loop_timer_.async_wait(std::bind(&game_server::cycle, this, _1, 0));
-}
-
-game_server::~game_server()
-{
+    do_wait(0);
 }
 
 void game_server::cycle(boost::system::error_code const& error, unsigned int nb_ticks)
@@ -37,7 +36,7 @@ void game_server::cycle(boost::system::error_code const& error, unsigned int nb_
     if (error)
     {
         if (error.value() != 995)
-            *log_stream << log("game server", "loop", color::red) << error.message() << endl;
+            log("game server", "loop", color::red) << error.message() << endl;
         return;
     }
 
@@ -56,11 +55,16 @@ void game_server::cycle(boost::system::error_code const& error, unsigned int nb_
     assert(nb_ticks >= 1);
 
     if (nb_ticks > 1)
-        *log_stream << log("game server", "loop", color::magenta) << "retard of " << nb_ticks - 1 << " tick" << (nb_ticks - 1 > 1 ? "s" : "") << endl;
+        log("game server", "loop", color::magenta) << "retard of " << nb_ticks - 1 << " tick" << (nb_ticks - 1 > 1 ? "s" : "") << endl;
 
     //log(color::magenta, "game server", "loop", "next cycle at ", std::chrono::duration_cast<std::chrono::duration<float>>(wake_time_ - start_time).count());
     loop_timer_.expires_at(wake_time_);
-    loop_timer_.async_wait(std::bind(&game_server::cycle, this, _1, nb_ticks));
+    do_wait(nb_ticks);
+}
+
+void game_server::do_wait(unsigned int nb_ticks)
+{
+    loop_timer_.async_wait(std::bind(&game_server::cycle, shared_from_this(), _1, nb_ticks));
 }
 
 } // namespace mmocli

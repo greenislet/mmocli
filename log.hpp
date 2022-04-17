@@ -2,9 +2,13 @@
 
 #include "config.hpp"
 
+#ifdef _WIN32
+# include <Windows.h>
+#endif
+
 #include <iomanip>
-#include <iostream>
 #include <mutex>
+#include <ostream>
 #include <thread>
 #include <map>
 #include <functional>
@@ -19,7 +23,7 @@ MMOCLI_API extern unsigned int                          time_max_size;
 MMOCLI_API extern unsigned int                          title_max_size;
 MMOCLI_API extern unsigned int                          subtitle_max_size;
 MMOCLI_API extern unsigned int                          message_max_size;
-MMOCLI_API extern std::ostream* log_stream;
+MMOCLI_API extern std::ostream*                         log_stream;
 MMOCLI_API extern std::chrono::steady_clock::time_point start_time;
 
 /**
@@ -42,9 +46,20 @@ underline off    24
 inverse off      27
 **/
 
-
 enum class color
 {
+#if defined(_WIN32)
+    dark_blue,
+    black,
+    red,
+    green,
+    yellow,
+    blue,
+    magenta,
+    cyan,
+    grey,
+    white,
+#else
     black,
     red,
     green,
@@ -54,17 +69,30 @@ enum class color
     cyan,
     white,
     reset
+#endif
 };
 
+MMOCLI_API extern color reset_color;
+
+#if defined(_WIN32)
+MMOCLI_API extern std::map<color, WORD> colors;
+#else
 MMOCLI_API extern std::map<color, std::string> colors;
+#endif
 
-std::string log(std::string const& title, std::string const& subtitle, color = color::reset);
+MMOCLI_API std::ostream &log(std::string const& title, std::string const& subtitle, color color = reset_color);
+MMOCLI_API std::ostream &log(color color = reset_color);
 
-class endl_t
+class MMOCLI_API flush_t
 {};
 
+class MMOCLI_API endl_t
+{};
+
+MMOCLI_API extern flush_t flush;
 MMOCLI_API extern endl_t endl;
 
-std::ostream& operator<<(std::ostream& os, endl_t);
+MMOCLI_API std::ostream& operator<<(std::ostream& os, flush_t);
+MMOCLI_API std::ostream& operator<<(std::ostream& os, endl_t);
 
 }
