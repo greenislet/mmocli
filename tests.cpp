@@ -5,6 +5,34 @@ using namespace boost;
 namespace mmocli
 {
 
+tcp_server::clients_container& proxy::get_clients(tcp_server::pointer tcp_server)
+{
+    return tcp_server->clients_;
+}
+
+tcp_client::message_container& proxy::get_messages(tcp_client::pointer tcp_client)
+{
+    return tcp_client->messages_;
+}
+
+tcp_client::string_builder& proxy::get_message_builder(tcp_client::pointer tcp_client)
+{
+    return tcp_client->message_builder_;
+}
+
+boost::asio::ip::tcp::socket& proxy::get_socket(tcp_client::pointer tcp_client)
+{
+    return tcp_client->socket_;
+}
+
+}
+
+namespace mmocli_tests
+{
+
+std::chrono::steady_clock::duration env::wait_dur_short = std::chrono::duration_cast<std::chrono::steady_clock::duration>(0.02s);
+std::chrono::steady_clock::duration env::wait_dur_long = std::chrono::duration_cast<std::chrono::steady_clock::duration>(1s);
+
 env::env(char** env)
     : env_(env)
 {}
@@ -38,50 +66,27 @@ void env::TearDown()
         }
 }
 
-std::chrono::steady_clock::duration env::wait_dur_short = std::chrono::duration_cast<std::chrono::steady_clock::duration>(0.02s);
-std::chrono::steady_clock::duration env::wait_dur_long = std::chrono::duration_cast<std::chrono::steady_clock::duration>(1s);
-
-tcp_server::clients_container& proxy::get_clients(tcp_server::pointer tcp_server)
+void test_tcp_server::init()
 {
-    return tcp_server->clients_;
-}
-
-tcp_client::message_container& proxy::get_messages(tcp_client::pointer tcp_client)
-{
-    return tcp_client->messages_;
-}
-
-tcp_client::string_builder& proxy::get_message_builder(tcp_client::pointer tcp_client)
-{
-    return tcp_client->message_builder_;
-}
-
-boost::asio::ip::tcp::socket& proxy::get_socket(tcp_client::pointer tcp_client)
-{
-    return tcp_client->socket_;
-}
-
-void tcp_server_helper::init()
-{
-    server = std::make_shared<tcp_server>(2222, io_context);
+    server = std::make_shared<mmocli::tcp_server>(2222, io_context);
 
     asio::ip::tcp::resolver resolver(io_context);
 
     results = resolver.resolve(asio::ip::tcp::resolver::query("127.0.0.1", "2222"));
 }
 
-void tcp_server_helper::add_sockets(unsigned int n)
+void test_tcp_server::add_sockets(unsigned int n)
 {
     for (unsigned int i = 0; i < n; ++i)
         add_socket();
 }
 
-void tcp_server_helper::add_socket()
+void test_tcp_server::add_socket()
 {
     sockets.emplace_back(io_context);
 }
 
-void tcp_server_helper::connect_sockets()
+void test_tcp_server::connect_sockets()
 {
     for (asio::ip::tcp::socket& socket : sockets)
         socket.async_connect(*results, [](boost::system::error_code const& error)
@@ -90,13 +95,13 @@ void tcp_server_helper::connect_sockets()
             });
 }
 
-void tcp_server_helper::close_sockets()
+void test_tcp_server::close_sockets()
 {
     for (asio::ip::tcp::socket& socket : sockets)
         ASSERT_NO_THROW(socket.close());
 }
 
-void tcp_server_helper::clear_sockets()
+void test_tcp_server::clear_sockets()
 {
     sockets.clear();
 }

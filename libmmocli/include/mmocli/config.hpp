@@ -7,7 +7,7 @@
 # if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
 #  define MMOCLI_SYSTEM_IOS
 # elif TARGET_OS_MAC
-#  define MMOCLI_SYSTEM_MACOSs
+#  define MMOCLI_SYSTEM_MACOS
 # else
 #  error This Apple operating system is not supported by MMOCLI library
 # endif

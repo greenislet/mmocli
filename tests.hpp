@@ -5,29 +5,15 @@
 #include <vector>
 #include <sstream>
 
-#include "on_exit.hpp"
-#include "server.hpp"
-#include "game_server.hpp"
-#include "tcp_server.hpp"
-#include "tcp_client.hpp"
-#include "log.hpp"
+#include <mmocli/on_exit.hpp>
+#include <mmocli/server.hpp>
+#include <mmocli/game_server.hpp>
+#include <mmocli/tcp_server.hpp>
+#include <mmocli/tcp_client.hpp>
+#include <mmocli/log.hpp>
 
 namespace mmocli
 {
-
-class env : public ::testing::Environment
-{
-private:
-    char**                                     env_;
-public:
-    static std::chrono::steady_clock::duration wait_dur_short;
-    static std::chrono::steady_clock::duration wait_dur_long;
-public:
-                                               env(char** env);
-public:
-    void                                       SetUp() override;
-    void                                       TearDown() override;
-};
 
 class proxy
 {
@@ -38,12 +24,31 @@ public:
     static boost::asio::ip::tcp::socket& get_socket(tcp_client::pointer tcp_client);
 };
 
-class tcp_server_helper : public testing::TestWithParam<unsigned int>
+}
+
+namespace mmocli_tests
+{
+
+class env : public ::testing::Environment
+{
+private:
+    char** env_;
+public:
+    static std::chrono::steady_clock::duration wait_dur_short;
+    static std::chrono::steady_clock::duration wait_dur_long;
+public:
+    env(char** env);
+public:
+    void                                       SetUp() override;
+    void                                       TearDown() override;
+};
+
+class test_tcp_server : public ::testing::Test
 {
 public:
     boost::asio::io_context                      io_context;
     std::vector<std::future<void>>               futures;
-    tcp_server::pointer                  server;
+    mmocli::tcp_server::pointer                  server;
     boost::asio::ip::tcp::resolver::results_type results;
     std::vector<boost::asio::ip::tcp::socket>    sockets;
 

@@ -14,13 +14,9 @@ game_server::game_server(asio::io_context& io_context)
     , loop_timer_(io_context_)
 {}
 
-void game_server::start(std::chrono::steady_clock::duration const& tick_duration)
+void game_server::start(std::chrono::steady_clock::duration const& tick_duration, std::chrono::steady_clock::time_point const& start_time)
 {
     tick_duration_ = tick_duration;
-    std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
-    std::chrono::steady_clock::duration elapsed = now - start_time;
-    elapsed -= std::chrono::floor<std::chrono::seconds>(elapsed);
-    wake_time_ = now + (1s - elapsed);
 
     log("game server", "startup", color::magenta)
         << "first cycle in " << std::chrono::duration_cast<std::chrono::duration<float>>(wake_time_ - std::chrono::steady_clock::now()).count()
@@ -28,6 +24,18 @@ void game_server::start(std::chrono::steady_clock::duration const& tick_duration
 
     loop_timer_.expires_at(wake_time_);
     do_wait(0);
+}
+
+std::chrono::steady_clock::time_point game_server::start(std::chrono::steady_clock::duration const& tick_duration)
+{
+    std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
+    std::chrono::steady_clock::duration span = now - start_time;
+    span -= std::chrono::floor<std::chrono::seconds>(span);
+    wake_time_ = now + (1s - span);
+
+    start(tick_duration, wake_time_);
+
+    return wake_time_;
 }
 
 void game_server::cycle(boost::system::error_code const& error, unsigned int nb_ticks)
@@ -40,9 +48,9 @@ void game_server::cycle(boost::system::error_code const& error, unsigned int nb_
         return;
     }
 
-    //log(color::magenta, "game server", "loop");
+    log("game server", "loop", color::magenta) << endl;
 
-    double delta = (std::chrono::duration_cast<delta_duration>(tick_duration_) * nb_ticks).count();
+    //double delta = (std::chrono::duration_cast<delta_duration>(tick_duration_) * nb_ticks).count();
 
 
     // Prepare next call

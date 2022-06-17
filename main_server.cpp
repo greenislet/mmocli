@@ -2,9 +2,9 @@
 
 #include <iostream>
 
-#include "server.hpp"
-#include "log.hpp"
-#include "tcp_server.hpp"
+#include <mmocli/server.hpp>
+#include <mmocli/log.hpp>
+#include <mmocli/tcp_server.hpp>
 
 using namespace std::literals::chrono_literals;
 

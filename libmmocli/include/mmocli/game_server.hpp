@@ -27,7 +27,8 @@ private:
 public:                                                  
                                                          game_server(boost::asio::io_context& io_context);
 public:
-    void                                                 start(std::chrono::steady_clock::duration const& tick_duration = 250ms);
+    void                                                 start(std::chrono::steady_clock::duration const& tick_duration, std::chrono::steady_clock::time_point const& start_time);
+    std::chrono::steady_clock::time_point                start(std::chrono::steady_clock::duration const& tick_duration = 250ms);
 private:                                                 
     void                                                 cycle(boost::system::error_code const& error, unsigned int nb_ticks);
     void                                                 do_wait(unsigned int nb_ticks);

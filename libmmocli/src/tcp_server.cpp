@@ -31,7 +31,7 @@ void tcp_server::on_accept(boost::system::error_code const& error)
 {
     if (error)
     {
-        log("tcp server", "accept", color::red) << error.value() <<  ":" << error.message() << endl;
+        log("tcp server", "accept", color::red) << error.value() << ":" << error.message() << endl;
         accepting_ = false;
         return;
     };
@@ -59,7 +59,7 @@ void tcp_server::remove_client(clients_container::value_type client)
 {
     std::lock_guard lock(clients_mutex_);
     clients_container::const_iterator it = std::remove(clients_.begin(), clients_.end(), client);
-    clients_.resize(clients_.size() - 1);
+    clients_.erase(it, clients_.cend());
 }
 
 } // namespace mmocli

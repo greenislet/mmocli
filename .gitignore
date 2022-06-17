@@ -1,9 +1,10 @@
+.vscode/
+
 libmmocli.so
 subprojects/
 build*/
 
 *~
-bin/
 
 .vs/
 Debug/

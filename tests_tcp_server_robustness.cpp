@@ -5,22 +5,21 @@
 #include <vector>
 #include <sstream>
 
-#include "on_exit.hpp"
-#include "server.hpp"
-#include "game_server.hpp"
-#include "tcp_server.hpp"
-#include "tcp_client.hpp"
-#include "log.hpp"
+//#include "on_exit.hpp"
+//#include "server.hpp"
+//#include "game_server.hpp"
+//#include "tcp_server.hpp"
+//#include "tcp_client.hpp"
+//#include "log.hpp"
 
 using namespace boost;
 
-namespace mmocli
+using namespace mmocli;
+
+namespace mmocli_tests
 {
 
-class robustness : public tcp_server_helper
-{};
-
-TEST_F(robustness, connect_disconnect)
+TEST_F(test_tcp_server, connect_disconnect)
 {
     init();
     server->start();
@@ -77,7 +76,7 @@ TEST_F(robustness, connect_disconnect)
 
 }
 
-TEST_F(robustness, write)
+TEST_F(test_tcp_server, write)
 {
     init();
     server->start();
@@ -166,6 +165,6 @@ int main(int argc, char** argv, char** env)
 {
     printf("Running main() from %s\n", __FILE__);
     testing::InitGoogleTest(&argc, argv);
-    testing::Environment* const foo_env = testing::AddGlobalTestEnvironment(new mmocli::env(env));
+    testing::AddGlobalTestEnvironment(new mmocli_tests::env(env));
     return RUN_ALL_TESTS();
 }
