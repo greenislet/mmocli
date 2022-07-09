@@ -71,21 +71,22 @@ void loop()
             break;
         if (focused_interactive != nullptr)
         {
-            if (ch == 9)
+            if (ch == 9 || ch == 351)
             {
-                focused_interactive->begin_unfocus();
-                if (focused_interactive->next_ != nullptr)
-                    focused_interactive->next_->begin_focus();
+                interactive* interactive::* p;
+                if (ch == 9)
+                    p = &interactive::next_;
                 else
-                    first_built_interactive->begin_focus();
-            }
-            else if (ch == 351)
-            {
+                    p = &interactive::prev_;
+
                 focused_interactive->begin_unfocus();
-                if (focused_interactive->prev_ != nullptr)
-                    focused_interactive->prev_->begin_focus();
-                else
-                    last_built_interactive->begin_focus();
+
+                interactive* to_focus;
+                do {
+                    to_focus = focused_interactive->*p;
+                } while (!to_focus->shown());
+
+                to_focus->begin_focus();
             }
             else
             {

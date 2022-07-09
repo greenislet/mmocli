@@ -17,7 +17,9 @@ interactive::interactive(unsigned int x, unsigned int y)
         last_built_interactive->next_ = this;
         prev_ = last_built_interactive;
     }
-        
+
+    first_built_interactive->prev_ = this;
+    next_ = first_built_interactive;
     last_built_interactive = this;
 }
 

@@ -38,12 +38,17 @@ int main(int argc, char** argv, char** env)
 
     create_btn->on_activate([=]
         {
-            subwin->hide();
-            //ezterm::window* register_win = mainwin->add<ezterm::window>(subwin_x, subwin_y, subwin_width, subwin_height);
-            //ezterm::label* email1_label = register_win->add<ezterm::label>(1, 1, "email");
-            //ezterm::field* email1_field = register_win->add<ezterm::field>(1 + email_label->size() + (align - email_label->size() - 1), 1, 34);
-            //ezterm::label* email2_label = register_win->add<ezterm::label>(1, 3, "email");
-            //ezterm::field* email2_field = register_win->add<ezterm::field>(1 + email_label->size() + (align - email_label->size() - 1), 3, 34);
+            subwin->begin_hide();
+            ezterm::window* register_win = mainwin->add<ezterm::window>(subwin_x, subwin_y, subwin_width, subwin_height);
+            ezterm::label* email1_label = register_win->add<ezterm::label>(1, 1, "email");
+            ezterm::field* email1_field = register_win->add<ezterm::field>(1 + email_label->size() + (align - email_label->size() - 1), 1, 34);
+            ezterm::label* email2_label = register_win->add<ezterm::label>(1, 2, "email");
+            ezterm::field* email2_field = register_win->add<ezterm::field>(1 + email_label->size() + (align - email_label->size() - 1), 2, 34);
+            ezterm::label* pwd1_label = register_win->add<ezterm::label>(1, 3, "password");
+            ezterm::field* pwd1_field = register_win->add<ezterm::field>(1 + email_label->size() + (align - email_label->size() - 1), 3, 34);
+            ezterm::label* pwd2_label = register_win->add<ezterm::label>(1, 4, "password");
+            ezterm::field* pwd2_field = register_win->add<ezterm::field>(1 + email_label->size() + (align - email_label->size() - 1), 4, 34);
+
 
         });
     email_field->begin_focus();

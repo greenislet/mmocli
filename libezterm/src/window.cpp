@@ -59,7 +59,7 @@ void window::show()
 void window::hide()
 {
     for (widget* child : children_)
-        child->hide();
+        child->begin_hide();
     ::wborder(impl_->handler, ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ');
 }
 
